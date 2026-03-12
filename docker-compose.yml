@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lexi_postgres
+    environment:
+      POSTGRES_USER: lexi
+      POSTGRES_PASSWORD: lexi_secret
+      POSTGRES_DB: lexipdf
+    ports:
+      - "5432:5432"
+    volumes:
+      - lexi_pgdata:/var/lib/postgresql/data
+
+volumes:
+  lexi_pgdata:
