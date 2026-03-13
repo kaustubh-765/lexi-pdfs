@@ -6,6 +6,7 @@ const nextConfig = {
     },
   },
   serverExternalPackages: ['pdf-parse', 'bcryptjs'],
+  transpilePackages: ['three'],
 };
 
 export default nextConfig;

@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(find /home/kaustubh/Desktop/Projects/lexi-pdfs/src/app -type f -name \"layout.tsx\" -o -type d -name \"\\(auth\\)\" -o -type d -name \"\\(app\\)\" | sort)",
+      "Bash(find /home/kaustubh/Desktop/Projects/lexi-pdfs/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.css\" -o -name \"*.mjs\" \\\\\\) 2>/dev/null | sort)",
+      "Bash(ls -la /home/kaustubh/Desktop/Projects/lexi-pdfs/src/app/\\\\\\(auth\\\\\\)/ 2>/dev/null)",
+      "Bash(cat /home/kaustubh/Desktop/Projects/lexi-pdfs/src/app/\\\\\\(app\\\\\\)/dashboard/page.tsx)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

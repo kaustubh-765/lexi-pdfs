@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { SummaryBadge } from './SummaryBadge';
+import { TypingIndicator } from './TypingIndicator';
 import { Spinner } from '@/components/ui/Spinner';
 
 interface Message {
@@ -100,7 +102,6 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
         }
       }
 
-      // Move streaming content to messages
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), role: 'assistant', content: accumulated },
@@ -127,7 +128,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
 
   if (!sessionData) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-slate-500">
         Session not found
       </div>
     );
@@ -136,34 +137,30 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
-        <h2 className="font-semibold text-gray-900 truncate">{sessionData.pdfName}</h2>
+      <div className="px-6 py-4 border-b border-white/5 glass">
+        <h2 className="font-semibold text-slate-200 truncate">{sessionData.pdfName}</h2>
         <SummaryBadge summary={sessionData.summary} className="mt-3" />
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {messages.length === 0 && !isStreaming && (
-          <div className="text-center text-gray-400 mt-8">
+          <div className="text-center text-slate-500 mt-8">
             <p className="text-sm">Ask a question about your document</p>
           </div>
         )}
 
-        {messages.map((msg) => (
-          <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
-        ))}
+        <AnimatePresence initial={false}>
+          {messages.map((msg) => (
+            <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
+          ))}
+        </AnimatePresence>
 
         {isStreaming && streamingContent && (
           <ChatMessage role="assistant" content={streamingContent} isStreaming />
         )}
 
-        {isStreaming && !streamingContent && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
-              <Spinner size="sm" />
-            </div>
-          </div>
-        )}
+        {isStreaming && !streamingContent && <TypingIndicator />}
 
         <div ref={messagesEndRef} />
       </div>
