@@ -2,9 +2,9 @@
 
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/Spinner';
+import { AnimatedPdfIcon } from './AnimatedPdfIcon';
 import type { SessionInfo } from './DashboardShell';
 
 interface UploadZoneProps {
@@ -68,10 +68,10 @@ export function UploadZone({ onUploadComplete }: UploadZoneProps) {
         {...getRootProps()}
         className={cn(
           'w-full max-w-lg border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all',
-          isDragActive && !isDragReject && 'border-blue-400 bg-blue-50',
-          isDragReject && 'border-red-400 bg-red-50',
-          !isDragActive && !uploading && 'border-gray-300 hover:border-blue-300 hover:bg-gray-50',
-          uploading && 'border-gray-200 bg-gray-50 cursor-not-allowed'
+          isDragActive && !isDragReject && 'border-indigo-500 bg-indigo-500/10',
+          isDragReject && 'border-red-500 bg-red-500/10',
+          !isDragActive && !uploading && 'border-white/10 hover:border-indigo-500/50 hover:bg-white/[0.02] glass',
+          uploading && 'border-white/5 bg-white/[0.02] glass cursor-not-allowed'
         )}
       >
         <input {...getInputProps()} />
@@ -79,28 +79,26 @@ export function UploadZone({ onUploadComplete }: UploadZoneProps) {
         {uploading ? (
           <div className="flex flex-col items-center gap-3">
             <Spinner size="lg" />
-            <p className="text-sm text-gray-600 font-medium">Uploading...</p>
-            <p className="text-xs text-gray-400">Your document will be processed in the background</p>
+            <p className="text-sm text-slate-300 font-medium">Uploading...</p>
+            <p className="text-xs text-slate-500">Your document will be processed in the background</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            {isDragActive ? (
-              <FileText className="h-12 w-12 text-blue-400" />
-            ) : (
-              <Upload className="h-12 w-12 text-gray-300" />
-            )}
+            <AnimatedPdfIcon />
             <div>
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-sm font-medium text-slate-300">
                 {isDragActive ? 'Drop your PDF here' : 'Upload a PDF to start chatting'}
               </p>
-              <p className="text-xs text-gray-400 mt-1">Drag & drop or click to browse • Max 20MB</p>
+              <p className="text-xs text-slate-500 mt-1">Drag & drop or click to browse • Max 20MB</p>
             </div>
           </div>
         )}
       </div>
 
       {error && (
-        <p className="mt-3 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</p>
+        <p className="mt-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-lg">
+          {error}
+        </p>
       )}
     </div>
   );

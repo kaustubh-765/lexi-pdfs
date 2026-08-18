@@ -3,7 +3,7 @@ import type { Embeddings } from '@langchain/core/embeddings';
 
 /**
  * LLM_PROVIDER       — controls the chat model
- *   groq    → llama-3.3-70b-versatile  (requires GROQ_API_KEY)   ← default, chat-only (no embeddings API)
+ *   groq    → openai/gpt-oss-120b       (requires GROQ_API_KEY)   ← default, chat-only (no embeddings API)
  *   gemini  → gemini-2.5-flash         (requires GEMINI_API_KEY)
  *   openai  → gpt-4o-mini              (requires OPENAI_API_KEY)
  *
@@ -71,10 +71,12 @@ export function getChatLLM(options: ChatLLMOptions = {}): BaseChatModel {
     // Groq has no LangChain-JS integration compatible with the @langchain/core version
     // pinned here (@langchain/groq requires @langchain/core@^1.x). Groq's API is
     // OpenAI-compatible, so we reuse ChatOpenAI pointed at Groq's base URL instead.
+    // NOTE: Groq deprecated llama-3.3-70b-versatile on 2026-06-17; openai/gpt-oss-120b
+    // is their recommended replacement (131k context, function calling, JSON mode).
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { ChatOpenAI } = require('@langchain/openai');
     return new ChatOpenAI({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       apiKey,
       streaming,
       temperature,

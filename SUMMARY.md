@@ -8,7 +8,7 @@ Both the chat/summarization LLM and the embeddings model are swappable via env v
 
 | | `LLM_PROVIDER` (chat + summarization) | `EMBEDDING_PROVIDER` |
 |---|---|---|
-| Default | `groq` → `llama-3.3-70b-versatile` | `huggingface` → `sentence-transformers/all-MiniLM-L6-v2` (384 dims) |
+| Default | `groq` → `openai/gpt-oss-120b` | `huggingface` → `sentence-transformers/all-MiniLM-L6-v2` (384 dims) |
 | Alternative | `gemini` → `gemini-2.5-flash` | `gemini` → `text-embedding-004` (768 dims) |
 | Alternative | `openai` → `gpt-4o-mini` | `openai` → `text-embedding-3-small` (1536 dims) |
 
