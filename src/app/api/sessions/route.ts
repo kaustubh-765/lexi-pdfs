@@ -4,8 +4,12 @@ import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getStorageProvider } from '@/lib/storage';
 import { createLogger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { isPdf } from '@/lib/pdfSignature';
 
 const logger = createLogger('api.sessions');
+const UPLOAD_LIMIT = 10;
+const UPLOAD_WINDOW_MS = 60 * 60 * 1000;
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -37,6 +41,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { allowed, retryAfterMs } = checkRateLimit('sessions:upload', authSession.user.id, UPLOAD_LIMIT, UPLOAD_WINDOW_MS);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+    );
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -51,6 +63,12 @@ export async function POST(req: NextRequest) {
 
     if (file.size > 20 * 1024 * 1024) {
       return NextResponse.json({ error: 'File too large (max 20MB)' }, { status: 400 });
+    }
+
+    // file.type is a client-supplied header and trivially spoofable — check
+    // the actual bytes before writing anything to storage.
+    if (!(await isPdf(file))) {
+      return NextResponse.json({ error: 'File does not appear to be a valid PDF' }, { status: 400 });
     }
 
     // Save file

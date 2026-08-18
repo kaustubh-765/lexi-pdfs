@@ -3,11 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { createChatChain } from '@/lib/rag/chat';
+import { checkRateLimit } from '@/lib/rateLimit';
 import { z } from 'zod';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(2000),
 });
+
+const CHAT_LIMIT = 30;
+const CHAT_WINDOW_MS = 10 * 60 * 1000;
 
 interface RouteParams {
   params: { sessionId: string };
@@ -17,6 +21,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   const authSession = await getServerSession(authOptions);
   if (!authSession?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { allowed, retryAfterMs } = checkRateLimit('chat', authSession.user.id, CHAT_LIMIT, CHAT_WINDOW_MS);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+    );
   }
 
   // Verify session ownership

@@ -6,8 +6,10 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated';
 
 export function RegisterForm() {
+  useRedirectIfAuthenticated();
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

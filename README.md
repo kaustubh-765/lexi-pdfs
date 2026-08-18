@@ -2,6 +2,8 @@
 
 A Next.js 14 (App Router) application for isolated, RAG-based PDF summarization and chat. Each user uploads PDFs into isolated sessions; vector search is always scoped by `sessionId` at the SQL level, making cross-session contamination structurally impossible.
 
+A dark, glassmorphism-themed UI (landing page for logged-out visitors, animated dashboard) renders chat/summary output through `react-markdown` rather than raw text.
+
 ## Architecture
 
 ```
@@ -115,25 +117,29 @@ Open [http://localhost:3000](http://localhost:3000).
 src/
 ├── instrumentation.ts       # Boots the in-process ingestion worker on server start
 ├── app/
-│   ├── (auth)/login/        # Login page
-│   ├── (auth)/register/     # Registration page
+│   ├── (auth)/login/        # Login page (redirects to /dashboard if already authenticated)
+│   ├── (auth)/register/     # Registration page (same redirect)
 │   ├── (app)/dashboard/     # Protected dashboard
 │   └── api/
 │       ├── auth/[...nextauth]/     # NextAuth handler
-│       ├── register/               # User registration
-│       ├── sessions/               # List + create (fire-and-forget) sessions
+│       ├── register/               # User registration (rate-limited)
+│       ├── sessions/               # List + create (fire-and-forget, rate-limited) sessions
 │       ├── sessions/[id]/          # Get + delete session
-│       ├── sessions/[id]/retry/    # Retry a FAILED session
-│       └── chat/[sessionId]/       # Streaming SSE chat
+│       ├── sessions/[id]/retry/    # Retry a FAILED session (rate-limited)
+│       └── chat/[sessionId]/       # Streaming SSE chat (rate-limited)
 ├── components/
 │   ├── ui/                  # Button, Input, Spinner
 │   ├── auth/                # LoginForm, RegisterForm
+│   ├── landing/              # Marketing landing page for logged-out visitors
 │   └── dashboard/           # DashboardShell, ChatInterface, UploadZone, etc.
 ├── hooks/
-│   └── usePollWhile.ts      # Generic polling hook (used for session status)
+│   ├── usePollWhile.ts                  # Generic polling hook (used for session status)
+│   └── useRedirectIfAuthenticated.ts    # Catches bfcache-restored /login and /register views
 └── lib/
     ├── prisma.ts            # Singleton Prisma client
     ├── logger.ts            # Structured logger
+    ├── rateLimit.ts          # In-memory fixed-window rate limiter (no Redis)
+    ├── pdfSignature.ts       # Magic-byte PDF check (defense against spoofed Content-Type)
     ├── llm/                 # getChatLLM() / getEmbeddingsClient() provider switch
     ├── auth/                # Password hashing
     ├── storage/             # LocalFileService + S3Provider stub
@@ -146,6 +152,19 @@ src/
         ├── retriever.ts     # Session-scoped vector search
         └── chat.ts          # LCEL streaming chain
 ```
+
+## Docker Deployment
+
+The `Dockerfile` + `docker-compose.yml` run the whole stack — app and Postgres — with a single command.
+
+```bash
+cp .env.example .env   # fill in real API keys and a random NEXTAUTH_SECRET
+docker compose up -d --build
+```
+
+The `app` container's entrypoint (`docker-entrypoint.sh`) waits for Postgres, runs `prisma db push` + the pgvector/HNSW SQL migration, then starts `next start` — all on every container start (both steps are idempotent). Uploaded PDFs persist in a named volume (`lexi_uploads`) since `STORAGE_PROVIDER=local` is the only implemented storage backend today; see the Production Checklist in [SUMMARY.md](./SUMMARY.md) for the free S3-compatible alternative if you want files to survive without a volume.
+
+Notably **not** using Next's `output: 'standalone'` — see the comment at the top of the `Dockerfile` for why (a currently-open class of Next.js bugs where `instrumentation.ts`, which boots the ingestion worker, silently fails to run under standalone output).
 
 ## Production Deployment
 
