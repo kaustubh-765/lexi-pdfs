@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getStorageProvider } from '@/lib/storage';
-import { ingestPdf } from '@/lib/rag/ingest';
-import { summarizePdf } from '@/lib/rag/summarize';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api.sessions');
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -19,6 +20,8 @@ export async function GET() {
       id: true,
       pdfName: true,
       summary: true,
+      status: true,
+      errorMessage: true,
       createdAt: true,
       updatedAt: true,
       _count: { select: { messages: true } },
@@ -54,39 +57,29 @@ export async function POST(req: NextRequest) {
     const storage = getStorageProvider();
     const pdfPath = await storage.save(file);
 
-    // Create session record
+    // Create session as PENDING — the in-process ingestion worker (see
+    // src/lib/worker/ingestionWorker.ts) picks it up and processes it asynchronously,
+    // so we respond immediately instead of blocking on parse/embed/summarize here.
     const dbSession = await prisma.session.create({
       data: {
         userId: authSession.user.id,
         pdfName: file.name,
         pdfPath,
+        status: 'PENDING',
       },
-    });
-
-    // Get absolute path for ingestion
-    const absolutePath = await storage.getPath(pdfPath);
-
-    // Ingest PDF (embed chunks)
-    await ingestPdf(dbSession.id, absolutePath);
-
-    // Generate summary (map-reduce)
-    const summary = await summarizePdf(dbSession.id);
-
-    // Update session with summary
-    const updated = await prisma.session.update({
-      where: { id: dbSession.id },
-      data: { summary },
       select: {
         id: true,
         pdfName: true,
         summary: true,
+        status: true,
+        errorMessage: true,
         createdAt: true,
       },
     });
 
-    return NextResponse.json(updated, { status: 201 });
+    return NextResponse.json(dbSession, { status: 202 });
   } catch (error) {
-    console.error('Session creation error:', error);
+    logger.error('session creation failed', { err: error });
     return NextResponse.json({ error: 'Failed to process PDF' }, { status: 500 });
   }
 }

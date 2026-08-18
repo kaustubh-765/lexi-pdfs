@@ -3,13 +3,7 @@
 import { LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { SessionItem } from './SessionItem';
-
-interface SessionInfo {
-  id: string;
-  pdfName: string;
-  summary: string | null;
-  createdAt: string;
-}
+import type { SessionInfo } from './DashboardShell';
 
 interface SessionSidebarProps {
   sessions: SessionInfo[];

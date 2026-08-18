@@ -5,9 +5,10 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/Spinner';
+import type { SessionInfo } from './DashboardShell';
 
 interface UploadZoneProps {
-  onUploadComplete: (session: { id: string; pdfName: string; summary: string | null; createdAt: string }) => void;
+  onUploadComplete: (session: SessionInfo) => void;
 }
 
 export function UploadZone({ onUploadComplete }: UploadZoneProps) {
@@ -78,8 +79,8 @@ export function UploadZone({ onUploadComplete }: UploadZoneProps) {
         {uploading ? (
           <div className="flex flex-col items-center gap-3">
             <Spinner size="lg" />
-            <p className="text-sm text-gray-600 font-medium">Processing your PDF...</p>
-            <p className="text-xs text-gray-400">Generating embeddings and summary</p>
+            <p className="text-sm text-gray-600 font-medium">Uploading...</p>
+            <p className="text-xs text-gray-400">Your document will be processed in the background</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">

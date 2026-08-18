@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { SessionSidebar } from './SessionSidebar';
 import { ChatInterface } from './ChatInterface';
 import { UploadZone } from './UploadZone';
+import { usePollWhile } from '@/hooks/usePollWhile';
 
-interface SessionInfo {
+export type SessionStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED';
+
+export interface SessionInfo {
   id: string;
   pdfName: string;
   summary: string | null;
+  status: SessionStatus;
+  errorMessage?: string | null;
   createdAt: string;
 }
 
@@ -38,6 +43,20 @@ export function DashboardShell({ initialSessions }: DashboardShellProps) {
     }
   }
 
+  const fetchSessions = useCallback(async () => {
+    const res = await fetch('/api/sessions');
+    if (!res.ok) throw new Error('Failed to refresh sessions');
+    return (await res.json()) as SessionInfo[];
+  }, []);
+
+  // Keep sidebar/session statuses fresh while anything is still being ingested.
+  usePollWhile(
+    fetchSessions,
+    (freshSessions) => setSessions(freshSessions),
+    (freshSessions) => freshSessions.some((s) => s.status === 'PENDING' || s.status === 'PROCESSING'),
+    2000
+  );
+
   return (
     <div className="flex h-screen bg-gray-50">
       <SessionSidebar
@@ -49,7 +68,7 @@ export function DashboardShell({ initialSessions }: DashboardShellProps) {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {activeSessionId ? (
-          <ChatInterface sessionId={activeSessionId} />
+          <ChatInterface sessionId={activeSessionId} onDelete={handleDeleteSession} />
         ) : (
           <UploadZone onUploadComplete={handleUploadComplete} />
         )}

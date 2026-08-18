@@ -1,7 +1,9 @@
-import { prisma } from '@/lib/prisma';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { getChatLLM } from '@/lib/llm';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('rag.summarize');
 
 const mapPrompt = PromptTemplate.fromTemplate(
   `Summarize the following text excerpt from a PDF document in 2-3 sentences:
@@ -21,14 +23,12 @@ Section summaries:
 Final summary:`
 );
 
-export async function summarizePdf(sessionId: string): Promise<string> {
-  const sections = await prisma.documentSection.findMany({
-    where: { sessionId },
-    select: { id: true, content: true },
-    orderBy: { createdAt: 'asc' },
-  });
-
-  if (sections.length === 0) {
+/**
+ * Map-reduce summarization over in-memory chunk text. Takes no sessionId/DB
+ * dependency so it can run before any DocumentSection rows exist for the session.
+ */
+export async function summarizeChunks(chunks: string[]): Promise<string> {
+  if (chunks.length === 0) {
     return 'No content available to summarize.';
   }
 
@@ -39,9 +39,14 @@ export async function summarizePdf(sessionId: string): Promise<string> {
   const mapChain = mapPrompt.pipe(llm).pipe(outputParser);
   const chunkSummaries: string[] = [];
 
-  for (const section of sections) {
-    const summary = await mapChain.invoke({ text: section.content });
-    chunkSummaries.push(summary.trim());
+  for (let i = 0; i < chunks.length; i++) {
+    try {
+      const summary = await mapChain.invoke({ text: chunks[i] });
+      chunkSummaries.push(summary.trim());
+    } catch (err) {
+      logger.error('map-stage summarization failed', { err, chunkIndex: i, totalChunks: chunks.length });
+      throw err;
+    }
   }
 
   // Reduce: combine all summaries
