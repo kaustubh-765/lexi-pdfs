@@ -3,8 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getStorageProvider } from '@/lib/storage';
-import { ingestPdf } from '@/lib/rag/ingest';
-import { summarizePdf } from '@/lib/rag/summarize';
+import { createLogger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { isPdf } from '@/lib/pdfSignature';
+
+const logger = createLogger('api.sessions');
+const UPLOAD_LIMIT = 10;
+const UPLOAD_WINDOW_MS = 60 * 60 * 1000;
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -19,6 +24,8 @@ export async function GET() {
       id: true,
       pdfName: true,
       summary: true,
+      status: true,
+      errorMessage: true,
       createdAt: true,
       updatedAt: true,
       _count: { select: { messages: true } },
@@ -32,6 +39,14 @@ export async function POST(req: NextRequest) {
   const authSession = await getServerSession(authOptions);
   if (!authSession?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { allowed, retryAfterMs } = checkRateLimit('sessions:upload', authSession.user.id, UPLOAD_LIMIT, UPLOAD_WINDOW_MS);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+    );
   }
 
   try {
@@ -50,43 +65,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File too large (max 20MB)' }, { status: 400 });
     }
 
+    // file.type is a client-supplied header and trivially spoofable — check
+    // the actual bytes before writing anything to storage.
+    if (!(await isPdf(file))) {
+      return NextResponse.json({ error: 'File does not appear to be a valid PDF' }, { status: 400 });
+    }
+
     // Save file
     const storage = getStorageProvider();
     const pdfPath = await storage.save(file);
 
-    // Create session record
+    // Create session as PENDING — the in-process ingestion worker (see
+    // src/lib/worker/ingestionWorker.ts) picks it up and processes it asynchronously,
+    // so we respond immediately instead of blocking on parse/embed/summarize here.
     const dbSession = await prisma.session.create({
       data: {
         userId: authSession.user.id,
         pdfName: file.name,
         pdfPath,
+        status: 'PENDING',
       },
-    });
-
-    // Get absolute path for ingestion
-    const absolutePath = await storage.getPath(pdfPath);
-
-    // Ingest PDF (embed chunks)
-    await ingestPdf(dbSession.id, absolutePath);
-
-    // Generate summary (map-reduce)
-    const summary = await summarizePdf(dbSession.id);
-
-    // Update session with summary
-    const updated = await prisma.session.update({
-      where: { id: dbSession.id },
-      data: { summary },
       select: {
         id: true,
         pdfName: true,
         summary: true,
+        status: true,
+        errorMessage: true,
         createdAt: true,
       },
     });
 
-    return NextResponse.json(updated, { status: 201 });
+    return NextResponse.json(dbSession, { status: 202 });
   } catch (error) {
-    console.error('Session creation error:', error);
+    logger.error('session creation failed', { err: error });
     return NextResponse.json({ error: 'Failed to process PDF' }, { status: 500 });
   }
 }

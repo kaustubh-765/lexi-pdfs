@@ -18,6 +18,8 @@ export default async function DashboardPage() {
       id: true,
       pdfName: true,
       summary: true,
+      status: true,
+      errorMessage: true,
       createdAt: true,
     },
   });

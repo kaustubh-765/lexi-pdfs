@@ -2,6 +2,7 @@
 
 import { useState, KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
@@ -27,8 +28,10 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about your docu
     }
   }
 
+  const canSend = !!value.trim() && !disabled;
+
   return (
-    <div className="flex items-end gap-2 p-4 border-t border-gray-200 bg-white">
+    <div className="flex items-end gap-2 p-4 border-t border-white/5 glass">
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -37,24 +40,29 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about your docu
         placeholder={placeholder}
         rows={1}
         className={cn(
-          'flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+          'flex-1 resize-none rounded-xl px-4 py-2.5 text-sm',
+          'bg-white/5 border border-white/10 text-slate-200 placeholder:text-slate-500',
+          'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'max-h-32 overflow-y-auto'
         )}
         style={{ minHeight: '42px' }}
       />
-      <button
+      <motion.button
         onClick={handleSend}
-        disabled={disabled || !value.trim()}
+        disabled={!canSend}
+        whileHover={canSend ? { scale: 1.05 } : {}}
+        whileTap={canSend ? { scale: 0.95 } : {}}
         className={cn(
           'p-2.5 rounded-xl text-white transition-colors',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
-          value.trim() && !disabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300'
+          'disabled:opacity-40 disabled:cursor-not-allowed',
+          canSend
+            ? 'bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/25'
+            : 'bg-white/10'
         )}
       >
         <Send className="h-4 w-4" />
-      </button>
+      </motion.button>
     </div>
   );
 }

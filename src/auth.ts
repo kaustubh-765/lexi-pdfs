@@ -2,6 +2,10 @@ import NextAuth, { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth/password';
+import { checkRateLimit } from '@/lib/rateLimit';
+
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -13,6 +17,14 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        // Rate-limit by the email being attempted, not the caller's IP —
+        // this is what actually protects a single account from credential
+        // stuffing, independent of how many IPs an attacker rotates through.
+        const { allowed } = checkRateLimit('login', credentials.email, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+        if (!allowed) {
           return null;
         }
 
