@@ -487,3 +487,14 @@ sequenceDiagram
 - **bfcache (back-forward cache):** a browser optimization that restores a previously-visited page from an in-memory snapshot on Back/Forward navigation, without re-running any server code — the reason a purely server-side fix can't catch every "stale page" scenario.
 - **Magic bytes:** the fixed byte sequence at the start (and sometimes end) of a file format that identifies its type, independent of the filename or any client-supplied metadata — `%PDF-` for PDF.
 - **`FOR UPDATE SKIP LOCKED`:** a Postgres row-locking clause that lets multiple concurrent workers each grab a different available row without waiting on or duplicating each other's work — the standard pattern for a database-backed job queue.
+
+
+---
+
+## Things One Can Add: 
+
+1. Profile Management: Stores user information + allow for password reset or account recovery
+2. Sharing of the Chats, is there a way user can share the chats with other people? How?
+3. Market Place: People can make the Chats Private + Public Depending on the use case and people can share the chats over the market place for other people to access it
+4. Model GuardRailing, only answers to the specific topic from the PDFs should be answered.
+5. Internet Compatibiliy, Model can search the internet for more reference. 
